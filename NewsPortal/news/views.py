@@ -1,8 +1,6 @@
 from django.http import HttpResponseNotFound
 from django.shortcuts import render
-from django.shortcuts import render
 from datetime import datetime
-# Create your views here.
 from django.urls import reverse_lazy
 from django.views.generic import (
     ListView, DetailView, CreateView, UpdateView, DeleteView
@@ -11,10 +9,8 @@ from .models import Post
 from .filters import PostFilter
 from .forms import PostForm
 
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.views.generic import TemplateView
-
-bad_names = ['incidents', 'Дурак', 'Гад']
 
 
 class NewsList(LoginRequiredMixin, ListView):
@@ -60,12 +56,13 @@ class NewsSearch(LoginRequiredMixin, ListView):
         return context
 
 
-class NewsDetail(LoginRequiredMixin,DetailView):
+class NewsDetail(LoginRequiredMixin, DetailView):
     model = Post
     template_name = 'flatpages/news_id.html'
     context_object_name = 'news_id'
 
-class NewsCreate(LoginRequiredMixin, CreateView):
+class NewsCreate(LoginRequiredMixin,PermissionRequiredMixin, CreateView):
+    permission_required = ('news.add_post',)
     form_class = PostForm
     model = Post
     template_name = 'flatpages/news_create.html'
@@ -75,7 +72,8 @@ class NewsCreate(LoginRequiredMixin, CreateView):
         Post.post_type = 'NE'
         return super().form_valid(form)
 
-class NewsUpdate(LoginRequiredMixin, UpdateView):
+class NewsUpdate(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
+    permission_required = ('news.change_post',)
     model = Post
     fields = ['author',  'title', 'content']
     template_name = 'flatpages/news_edit.html'
@@ -87,7 +85,8 @@ class NewsUpdate(LoginRequiredMixin, UpdateView):
 
 
 
-class NewsDelete(LoginRequiredMixin, DeleteView):
+class NewsDelete(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
+    permission_required = ('news.delete_post',)
     model = Post
     template_name = 'flatpages/news_delete.html'
     success_url = reverse_lazy('news')
@@ -97,7 +96,8 @@ class NewsDelete(LoginRequiredMixin, DeleteView):
 
 
 
-class ArticlesCreate(LoginRequiredMixin, CreateView):
+class ArticlesCreate(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
+    permission_required = ('news.add_post',)
     form_class = PostForm
     model = Post
     template_name = 'flatpages/articles_create.html'
@@ -107,7 +107,8 @@ class ArticlesCreate(LoginRequiredMixin, CreateView):
         Post.post_type = 'AR'
         return super().form_valid(form)
 
-class ArticlesUpdate(LoginRequiredMixin, UpdateView):
+class ArticlesUpdate(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
+    permission_required = ('news.change_post',)
     model = Post
     fields = ['author',  'title', 'content']
     template_name = 'flatpages/articles_edit.html'
@@ -115,7 +116,8 @@ class ArticlesUpdate(LoginRequiredMixin, UpdateView):
     def get_queryset(self):
         return super().get_queryset().filter(post_type = 'AR')
 
-class ArticlesDelete(LoginRequiredMixin, DeleteView):
+class ArticlesDelete(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
+    permission_required = ('news.delete_post',)
     model = Post
     template_name = 'flatpages/articles_delete.html'
     success_url = reverse_lazy('news')
