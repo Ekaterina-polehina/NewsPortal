@@ -1,7 +1,29 @@
-from django.db import models
-
+from django.core.mail import send_mail
+from django.contrib.auth.models import Group
 from django.db import models
 from django.contrib.auth.models import User
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.utils import timezone
+from django.urls import reverse
+from django.core.exceptions import ValidationError
+from django.utils.translation import gettext_lazy as _
+from django.dispatch import Signal
+
+
+post_save_news = Signal()
+
+
+# Handler for the signal
+def post_save_news_handler(sender, instance, created, send_notification_to_subscribers=None, **kwargs):
+    if created and instance.post_type == 'news':
+
+        # Your code to send notifications to subscribers
+        send_notification_to_subscribers.delay(instance.pk)
+
+
+# Connect the handler to the signal
+post_save_news.connect(post_save_news_handler, sender='news.Post')
 
 
 class Author(models.Model):
@@ -17,9 +39,14 @@ class Author(models.Model):
 
 class Category(models.Model):
     name = models.CharField(max_length=255, unique=True)
-
+    subscribers = models.ManyToManyField(User, related_name='subscribed_categories', blank=True)
+    posts = models.ManyToManyField('Post', through='PostCategory')
     def __str__(self):
         return self.name
+
+class PostManager(models.Manager):
+    def get_queryset(self):
+        return super(PostManager, self).get_queryset().filter(post_type='news')
 
 
 class Post(models.Model):
@@ -51,6 +78,8 @@ class PostCategory(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE)
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
 
+    class Meta:
+        unique_together = ('post', 'category')
 
 class Comment(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')
@@ -66,3 +95,9 @@ class Comment(models.Model):
     def dislike(self):
         self.rating -= 1
         self.save()
+
+@receiver(post_save, sender=User)
+def add_user_to_common_group(sender, instance, created, **kwargs):
+    if created:
+        common_group = Group.objects.get(name='common')
+        instance.groups.add(common_group)
